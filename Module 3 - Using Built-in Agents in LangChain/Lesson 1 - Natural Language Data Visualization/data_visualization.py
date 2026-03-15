@@ -15,14 +15,14 @@
 """
 
 import os
-import pandas as pd
-import matplotlib
+import pandas as pd  # pyre-ignore[21]
+import matplotlib  # pyre-ignore[21]
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from dotenv import load_dotenv
+import matplotlib.pyplot as plt  # pyre-ignore[21]
+from dotenv import load_dotenv  # pyre-ignore[21]
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
+from langchain_google_genai import ChatGoogleGenerativeAI  # pyre-ignore[21]
+from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent  # pyre-ignore[21]
 
 load_dotenv()
 

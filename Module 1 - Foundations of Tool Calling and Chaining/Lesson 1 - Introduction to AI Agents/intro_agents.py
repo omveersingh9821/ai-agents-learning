@@ -15,7 +15,8 @@
 
 import os
 import json
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # pyre-ignore[21]
+# pyre-ignore[21]: google.generativeai is installed in venv
 import google.generativeai as genai
 
 load_dotenv()
@@ -35,7 +36,7 @@ def plain_llm_call(question: str) -> str:
     print("🧠  PLAIN LLM (no tools)")
     print("=" * 60)
 
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    model = genai.GenerativeModel("gemini-flash-latest")
     response = model.generate_content(question)
 
     answer = response.text
@@ -78,7 +79,7 @@ def agent_with_tools(question: str) -> str:
 
     # Gemini can take Python functions directly as tools!
     model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
+        model_name="gemini-flash-latest",
         tools=[calculator],
     )
 

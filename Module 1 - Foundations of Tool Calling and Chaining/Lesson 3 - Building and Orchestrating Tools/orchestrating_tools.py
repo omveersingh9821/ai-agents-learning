@@ -16,7 +16,8 @@
 import os
 import json
 from datetime import datetime
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # pyre-ignore[21]
+# pyre-ignore[21]: google.generativeai is installed in venv
 import google.generativeai as genai
 
 load_dotenv()
@@ -62,7 +63,7 @@ def summarize_text(text: str, max_sentences: int = 2) -> dict:
         max_sentences: Max sentences in the summary (default 2)
     """
     sentences = text.replace(". ", ".\n").split("\n")
-    summary = ". ".join(sentences[:max_sentences]).strip()
+    summary = ". ".join(sentences[:max_sentences]).strip()  # pyre-ignore[6]
     if not summary.endswith("."):
         summary += "."
     return {"summary": summary, "original_length": len(text), "summary_length": len(summary)}
@@ -130,8 +131,7 @@ def run_agent_loop(question: str, max_iterations: int = 5) -> str:
         print(f"\n  ⚙️  Iteration {iteration + 1}/{max_iterations}")
 
         # Check for function calls
-        function_calls = [part.function_call for part in response.parts
-                          if hasattr(part, "function_call") and part.function_call.name]
+        function_calls = [part.function_call for part in response.parts if hasattr(part, "function_call") and part.function_call.name]  # pyre-ignore[16]
 
         # If no tool calls → agent is done
         if not function_calls:
@@ -144,13 +144,13 @@ def run_agent_loop(question: str, max_iterations: int = 5) -> str:
         for fc in function_calls:
             func_name = fc.name
             func_args = dict(fc.args)
-            print(f"     🔧 {func_name}({json.dumps(func_args)[:80]}...)")
+            print(f"     🔧 {func_name}({json.dumps(func_args)[:80]}...)")  # pyre-ignore[6]
 
             if func_name in TOOL_MAP:
-                result = TOOL_MAP[func_name](**func_args)
+                result = TOOL_MAP[func_name](**func_args)  # pyre-ignore[6]
             else:
                 result = {"error": f"Unknown tool: {func_name}"}
-            print(f"     📤 → {str(result)[:100]}...")
+            print(f"     📤 → {str(result)[:100]}...")  # pyre-ignore[6]
 
             function_responses.append(
                 genai.protos.Part(

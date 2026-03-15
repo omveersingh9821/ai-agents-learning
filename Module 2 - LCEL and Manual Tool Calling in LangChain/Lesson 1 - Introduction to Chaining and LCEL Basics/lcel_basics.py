@@ -15,12 +15,12 @@
 """
 
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # pyre-ignore[21]
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
+from langchain_google_genai import ChatGoogleGenerativeAI  # pyre-ignore[21]
+from langchain_core.prompts import ChatPromptTemplate  # pyre-ignore[21]
+from langchain_core.output_parsers import StrOutputParser, JsonOutputParser  # pyre-ignore[21]
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel  # pyre-ignore[21]
 
 load_dotenv()
 

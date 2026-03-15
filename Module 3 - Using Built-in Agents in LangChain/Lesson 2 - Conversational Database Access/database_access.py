@@ -15,14 +15,14 @@
 
 import os
 import json
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # pyre-ignore[21]
 
-import pandas as pd
-from sqlalchemy import create_engine, text
+import pandas as pd  # pyre-ignore[21]
+from sqlalchemy import create_engine, text  # pyre-ignore[21]
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.utilities import SQLDatabase
-from langchain_community.agent_toolkits import create_sql_agent
+from langchain_google_genai import ChatGoogleGenerativeAI  # pyre-ignore[21]
+from langchain_community.utilities import SQLDatabase  # pyre-ignore[21]
+from langchain_community.agent_toolkits import create_sql_agent  # pyre-ignore[21]
 
 load_dotenv()
 

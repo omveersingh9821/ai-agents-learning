@@ -16,7 +16,8 @@
 
 import os
 import json
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # pyre-ignore[21]
+# pyre-ignore[21]: google.generativeai is installed in venv
 import google.generativeai as genai
 
 load_dotenv()
@@ -123,8 +124,7 @@ def run_agent(question: str) -> str:
     response = chat.send_message(question)
 
     # Process function calls (may be multiple)
-    function_calls = [part.function_call for part in response.parts
-                      if hasattr(part, "function_call") and part.function_call.name]
+    function_calls = [part.function_call for part in response.parts if hasattr(part, "function_call") and part.function_call.name]  # pyre-ignore[16]
 
     if function_calls:
         print(f"\n  📋 Agent wants to call {len(function_calls)} tool(s):\n")
@@ -136,7 +136,7 @@ def run_agent(question: str) -> str:
             func_args = dict(fc.args)
             print(f"  [{i}] 🔧 {func_name}({func_args})")
 
-            result = TOOL_MAP[func_name](**func_args)
+            result = TOOL_MAP[func_name](**func_args)  # pyre-ignore[6]
             print(f"      📤 Result: {result}")
 
             function_responses.append(
