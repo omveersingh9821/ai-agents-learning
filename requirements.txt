@@ -1,0 +1,19 @@
+# Core LLM framework
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langchain-community>=0.3.0
+langchain-experimental>=0.3.0
+
+# OpenAI SDK
+openai>=1.50.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Data handling & visualization (Module 3)
+pandas>=2.0.0
+matplotlib>=3.8.0
+tabulate>=0.9.0
+
+# Database (Module 3)
+sqlalchemy>=2.0.0
