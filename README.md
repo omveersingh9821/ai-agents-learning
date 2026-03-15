@@ -1,6 +1,8 @@
 # 🤖 Fundamentals of Building AI Agents
 
 > Code companion for the **IBM Coursera** course: *Fundamentals of Building AI Agents*
+> 
+> Powered by **Google Gemini** (gemini-2.0-flash)
 
 ## 📁 Course Structure
 
@@ -54,7 +56,8 @@ pip install -r requirements.txt
 ### 3. Set up API key
 ```bash
 cp .env.example .env
-# Edit .env and add your OpenAI API key
+# Edit .env and add your Google Gemini API key
+# Get one for free at https://aistudio.google.com/apikey
 ```
 
 ### 4. Run any lesson
@@ -70,8 +73,14 @@ python "Module 1 - Foundations of Tool Calling and Chaining/Lesson 1 - Introduct
 | **2** | LCEL & Manual Tool Calling | LangChain Expression Language, bind_tools, ToolMessage, validation |
 | **3** | Built-in Agents in LangChain | Pandas DataFrame agent, SQL database agent, data visualization |
 
+## 🔑 API Key
+
+This project uses **Google Gemini** (free tier available). Get your API key at:
+
+👉 [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+
 ## ⚙️ Prerequisites
 
 - Python 3.10+
-- OpenAI API key (get one at [platform.openai.com](https://platform.openai.com/api-keys))
+- Google Gemini API key
 - Basic Python knowledge

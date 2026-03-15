@@ -17,11 +17,11 @@ import os
 import json
 from datetime import datetime
 from dotenv import load_dotenv
-from openai import OpenAI
+import google.generativeai as genai
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 # ─────────────────────────────────────────────
@@ -38,57 +38,62 @@ KNOWLEDGE_BASE = {
 notebook = []
 
 
-def search_knowledge(query: str) -> str:
-    """Search the knowledge base for information on a topic."""
+def search_knowledge(query: str) -> dict:
+    """Search the knowledge base for information on AI/tech topics.
+
+    Args:
+        query: Search query string
+    """
     query_lower = query.lower()
     results = []
     for topic, content in KNOWLEDGE_BASE.items():
         if any(word in topic for word in query_lower.split()):
             results.append({"topic": topic, "content": content})
     if results:
-        return json.dumps({"results": results, "count": len(results)})
-    return json.dumps({"results": [], "count": 0, "message": "No results found"})
+        return {"results": results, "count": len(results)}
+    return {"results": [], "count": 0, "message": "No results found"}
 
 
-def summarize_text(text: str, max_sentences: int = 2) -> str:
-    """Summarize a given text to a specified number of sentences."""
+def summarize_text(text: str, max_sentences: int = 2) -> dict:
+    """Summarize a given text to a specified number of sentences.
+
+    Args:
+        text: Text to summarize
+        max_sentences: Max sentences in the summary (default 2)
+    """
     sentences = text.replace(". ", ".\n").split("\n")
     summary = ". ".join(sentences[:max_sentences]).strip()
     if not summary.endswith("."):
         summary += "."
-    return json.dumps({"summary": summary, "original_length": len(text), "summary_length": len(summary)})
+    return {"summary": summary, "original_length": len(text), "summary_length": len(summary)}
 
 
-def save_note(title: str, content: str) -> str:
-    """Save a research note to the notebook."""
+def save_note(title: str, content: str) -> dict:
+    """Save a research note with a title and content.
+
+    Args:
+        title: Note title
+        content: Note content
+    """
     note = {"title": title, "content": content, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     notebook.append(note)
-    return json.dumps({"status": "saved", "note_number": len(notebook), "title": title})
+    return {"status": "saved", "note_number": len(notebook), "title": title}
 
 
-def list_notes() -> str:
+def list_notes() -> dict:
     """List all saved research notes."""
     if not notebook:
-        return json.dumps({"notes": [], "message": "No notes saved yet"})
-    return json.dumps({"notes": [{"number": i + 1, "title": n["title"], "timestamp": n["timestamp"]} for i, n in enumerate(notebook)], "total": len(notebook)})
+        return {"notes": [], "message": "No notes saved yet"}
+    return {"notes": [{"number": i + 1, "title": n["title"], "timestamp": n["timestamp"]}
+                      for i, n in enumerate(notebook)], "total": len(notebook)}
+
+
+ALL_TOOLS = [search_knowledge, summarize_text, save_note, list_notes]
+TOOL_MAP = {fn.__name__: fn for fn in ALL_TOOLS}
 
 
 # ─────────────────────────────────────────────
-# 2. Tool schemas
-# ─────────────────────────────────────────────
-
-TOOLS = [
-    {"type": "function", "function": {"name": "search_knowledge", "description": "Search the knowledge base for information on AI/tech topics.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "Search query"}}, "required": ["query"]}}},
-    {"type": "function", "function": {"name": "summarize_text", "description": "Summarize a piece of text to fewer sentences.", "parameters": {"type": "object", "properties": {"text": {"type": "string", "description": "Text to summarize"}, "max_sentences": {"type": "integer", "description": "Max sentences in summary (default 2)"}}, "required": ["text"]}}},
-    {"type": "function", "function": {"name": "save_note", "description": "Save a research note with a title and content.", "parameters": {"type": "object", "properties": {"title": {"type": "string", "description": "Note title"}, "content": {"type": "string", "description": "Note content"}}, "required": ["title", "content"]}}},
-    {"type": "function", "function": {"name": "list_notes", "description": "List all saved research notes.", "parameters": {"type": "object", "properties": {}}}},
-]
-
-TOOL_MAP = {"search_knowledge": search_knowledge, "summarize_text": summarize_text, "save_note": save_note, "list_notes": list_notes}
-
-
-# ─────────────────────────────────────────────
-# 3. The Agentic Loop — keeps going until done
+# 2. The Agentic Loop — keeps going until done
 # ─────────────────────────────────────────────
 
 def run_agent_loop(question: str, max_iterations: int = 5) -> str:
@@ -105,40 +110,66 @@ def run_agent_loop(question: str, max_iterations: int = 5) -> str:
     print(f"  🗣️  User: {question}")
     print("━" * 60)
 
-    messages = [
-        {"role": "system", "content": "You are a research assistant with access to a knowledge base, a summarizer, and a notebook. When the user asks you to research a topic:\n1. Search the knowledge base\n2. Summarize the findings\n3. Save important notes\n4. Provide a comprehensive answer\nYou can chain multiple tool calls to complete complex tasks."},
-        {"role": "user", "content": question},
-    ]
+    model = genai.GenerativeModel(
+        model_name="gemini-2.0-flash",
+        tools=ALL_TOOLS,
+        system_instruction=(
+            "You are a research assistant with access to a knowledge base, "
+            "a summarizer, and a notebook. When the user asks you to research "
+            "a topic:\n1. Search the knowledge base\n"
+            "2. Summarize the findings\n3. Save important notes\n"
+            "4. Provide a comprehensive answer\n"
+            "You can chain multiple tool calls to complete complex tasks."
+        ),
+    )
+
+    chat = model.start_chat()
+    response = chat.send_message(question)
 
     for iteration in range(max_iterations):
         print(f"\n  ⚙️  Iteration {iteration + 1}/{max_iterations}")
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini", messages=messages, tools=TOOLS, tool_choice="auto", temperature=0)
-        assistant_msg = response.choices[0].message
+        # Check for function calls
+        function_calls = [part.function_call for part in response.parts
+                          if hasattr(part, "function_call") and part.function_call.name]
 
-        if not assistant_msg.tool_calls:
+        # If no tool calls → agent is done
+        if not function_calls:
             print(f"\n  ✅ Agent finished after {iteration + 1} iteration(s)")
-            print(f"\n  🤖 Agent: {assistant_msg.content}")
-            return assistant_msg.content
+            print(f"\n  🤖 Agent: {response.text}")
+            return response.text
 
-        messages.append(assistant_msg)
-        for tool_call in assistant_msg.tool_calls:
-            func_name = tool_call.function.name
-            func_args = json.loads(tool_call.function.arguments)
+        # Execute all function calls
+        function_responses = []
+        for fc in function_calls:
+            func_name = fc.name
+            func_args = dict(fc.args)
             print(f"     🔧 {func_name}({json.dumps(func_args)[:80]}...)")
+
             if func_name in TOOL_MAP:
-                result = TOOL_MAP[func_name](**func_args) if func_args else TOOL_MAP[func_name]()
+                result = TOOL_MAP[func_name](**func_args)
             else:
-                result = json.dumps({"error": f"Unknown tool: {func_name}"})
-            print(f"     📤 → {result[:100]}...")
-            messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": result})
+                result = {"error": f"Unknown tool: {func_name}"}
+            print(f"     📤 → {str(result)[:100]}...")
+
+            function_responses.append(
+                genai.protos.Part(
+                    function_response=genai.protos.FunctionResponse(
+                        name=func_name, response={"result": result}
+                    )
+                )
+            )
+
+        # Send results back and get next response
+        response = chat.send_message(
+            genai.protos.Content(parts=function_responses)
+        )
 
     return "Max iterations reached."
 
 
 # ─────────────────────────────────────────────
-# 4. Demo
+# 3. Demo
 # ─────────────────────────────────────────────
 
 def main():

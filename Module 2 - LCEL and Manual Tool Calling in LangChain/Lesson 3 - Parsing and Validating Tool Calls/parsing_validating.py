@@ -7,7 +7,6 @@
           tool_choice parameter, forcing specific tools, fallbacks
 
  Key concepts:
-   • tool_choice="auto" / "required" / "none" / specific tool
    • Validating tool arguments before execution
    • Handling errors gracefully
    • Building a robust agent loop with error recovery
@@ -19,7 +18,7 @@ import json
 from typing import Optional
 from dotenv import load_dotenv
 
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, ToolMessage, SystemMessage
 from langchain_core.tools import tool
 
@@ -100,41 +99,7 @@ tool_map = {t.name: t for t in all_tools}
 
 
 # ─────────────────────────────────────────────
-# 2. tool_choice parameter options
-# ─────────────────────────────────────────────
-
-def demo_tool_choice():
-    """Demonstrate different tool_choice settings."""
-    print("\n" + "=" * 60)
-    print("  1️⃣  tool_choice Options")
-    print("=" * 60)
-
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-    question = "I want to go to London next month."
-    messages = [HumanMessage(content=question)]
-
-    for choice, label in [("auto", "auto"), ("required", "required"), ("none", "none")]:
-        print(f"\n  📋 tool_choice='{choice}':")
-        llm_bound = llm.bind_tools(all_tools, tool_choice=choice)
-        resp = llm_bound.invoke(messages)
-        print(f"     Tool calls: {len(resp.tool_calls)}")
-        if resp.tool_calls:
-            print(f"     Tool chosen: {resp.tool_calls[0]['name']}")
-        if resp.content:
-            print(f"     Content: {resp.content[:100]}")
-
-    # Force a specific tool
-    print(f"\n  📋 tool_choice=specific (search_hotels):")
-    llm_specific = llm.bind_tools(
-        all_tools, tool_choice={"type": "function", "function": {"name": "search_hotels"}})
-    resp = llm_specific.invoke(messages)
-    if resp.tool_calls:
-        print(f"     Forced tool: {resp.tool_calls[0]['name']}")
-        print(f"     Args: {resp.tool_calls[0]['args']}")
-
-
-# ─────────────────────────────────────────────
-# 3. Robust agent loop with error handling
+# 2. Robust agent loop with error handling
 # ─────────────────────────────────────────────
 
 def robust_agent(question: str, max_iterations: int = 5) -> str:
@@ -143,7 +108,7 @@ def robust_agent(question: str, max_iterations: int = 5) -> str:
     print(f"  🗣️ User: {question}")
     print("=" * 60)
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
     llm_with_tools = llm.bind_tools(all_tools)
 
     messages = [
@@ -190,7 +155,6 @@ def main():
     print("  MODULE 2 · LESSON 3: Parsing and Validating Tool Calls")
     print("━" * 60)
 
-    demo_tool_choice()
     robust_agent("Book a flight from JFK to LHR on 2026-06-15 for 2 passengers. Also find hotels in London under $300 per night for Jun 15-20.")
     robust_agent("Book a flight from XX to LHR yesterday for 15 passengers.")
 

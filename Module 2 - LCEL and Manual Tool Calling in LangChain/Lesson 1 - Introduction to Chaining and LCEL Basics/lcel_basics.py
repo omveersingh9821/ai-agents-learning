@@ -17,7 +17,7 @@
 import os
 from dotenv import load_dotenv
 
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
@@ -35,7 +35,7 @@ def basic_chain_example():
     print("  1️⃣  Basic LCEL Chain")
     print("=" * 60)
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
     prompt = ChatPromptTemplate.from_messages([
         ("system", "You are a helpful assistant that explains tech concepts simply."),
         ("human", "Explain {topic} in 2-3 sentences for a beginner."),
@@ -64,7 +64,7 @@ def multi_step_chain():
     print("  2️⃣  Multi-Step Chain")
     print("=" * 60)
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7)
 
     explain_prompt = ChatPromptTemplate.from_messages([
         ("system", "You are a tech educator."),
@@ -97,7 +97,7 @@ def parallel_chains():
     print("  3️⃣  Parallel Chains (RunnableParallel)")
     print("=" * 60)
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7)
 
     parallel_chain = RunnableParallel(
         pros=ChatPromptTemplate.from_messages([("human", "List 3 advantages of {topic}. Be concise.")]) | llm | StrOutputParser(),
@@ -121,7 +121,7 @@ def lambda_chain():
     print("  4️⃣  RunnableLambda (Custom Functions in Chains)")
     print("=" * 60)
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
 
     def format_as_bullet_points(text: str) -> str:
         lines = [line.strip() for line in text.strip().split("\n") if line.strip()]
@@ -149,11 +149,11 @@ def json_output_chain():
     print("  5️⃣  JSON Output Parsing")
     print("=" * 60)
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
     json_parser = JsonOutputParser()
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful assistant that always responds in JSON format."),
+        ("system", "You are a helpful assistant that always responds in valid JSON format only, no markdown."),
         ("human", "Analyze the programming language '{language}' and return a JSON object with: name, paradigm, year_created, popular_frameworks (list), difficulty (1-10)."),
     ])
 

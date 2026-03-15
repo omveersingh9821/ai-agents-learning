@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import create_sql_agent
 
@@ -116,7 +116,7 @@ def manual_queries(db_uri: str):
 
 def create_db_agent(db_uri: str):
     """Create a SQL agent that translates natural language → SQL queries."""
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
     db = SQLDatabase.from_uri(db_uri)
 
     print("\n" + "=" * 60)
@@ -209,7 +209,7 @@ def main():
         # Uncomment to start interactive mode:
         # interactive_mode(agent)
     except Exception as e:
-        print(f"\n  ⚠️  SQL Agent requires an OpenAI API key.")
+        print(f"\n  ⚠️  SQL Agent requires a Google Gemini API key.")
         print(f"     Error: {e}")
         print(f"     Manual queries above show the same data.")
 

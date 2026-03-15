@@ -3,11 +3,11 @@
  MODULE 1 — LESSON 2: Getting Started with Tool Calling
 ===============================================================================
  Course : Fundamentals of Building AI Agents (IBM · Coursera)
- Topics : Function calling with OpenAI, defining tool schemas,
-          handling tool_calls response, single & parallel tool calls
+ Topics : Function calling with Gemini, defining tool schemas,
+          handling function_call responses, single & parallel tool calls
 
  Key concepts:
-   • Tools are defined as JSON schemas that describe function signatures
+   • Tools are Python functions that Gemini can call automatically
    • The LLM decides WHEN and HOW to call tools based on user input
    • We execute the tool locally and pass results back to the LLM
    • The LLM can request multiple tool calls in a single response
@@ -17,19 +17,23 @@
 import os
 import json
 from dotenv import load_dotenv
-from openai import OpenAI
+import google.generativeai as genai
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 # ─────────────────────────────────────────────
 # 1. Define multiple tools (Python functions)
 # ─────────────────────────────────────────────
 
-def get_weather(city: str) -> str:
-    """Simulate fetching weather data for a city."""
+def get_weather(city: str) -> dict:
+    """Get the current weather for a given city.
+
+    Args:
+        city: The city name, e.g. 'London', 'New York'
+    """
     weather_data = {
         "new york": {"temp": "22°C", "condition": "Partly cloudy", "humidity": "65%"},
         "london": {"temp": "15°C", "condition": "Rainy", "humidity": "80%"},
@@ -40,29 +44,38 @@ def get_weather(city: str) -> str:
     city_lower = city.lower()
     if city_lower in weather_data:
         data = weather_data[city_lower]
-        return json.dumps({"city": city, "temperature": data["temp"],
-                           "condition": data["condition"], "humidity": data["humidity"]})
-    return json.dumps({"error": f"Weather data not available for {city}"})
+        return {"city": city, "temperature": data["temp"],
+                "condition": data["condition"], "humidity": data["humidity"]}
+    return {"error": f"Weather data not available for {city}"}
 
 
-def get_time(timezone: str) -> str:
-    """Simulate getting current time in a timezone."""
+def get_time(timezone: str) -> dict:
+    """Get the current time in a given timezone.
+
+    Args:
+        timezone: Timezone abbreviation, e.g. 'EST', 'GMT', 'IST', 'JST'
+    """
     from datetime import datetime, timedelta, timezone as tz
-
     offsets = {"EST": -5, "CST": -6, "PST": -8, "GMT": 0,
                "IST": 5.5, "JST": 9, "CET": 1, "AEST": 11}
     offset = offsets.get(timezone.upper())
     if offset is not None:
         utc_now = datetime.now(tz.utc)
         local_time = utc_now + timedelta(hours=offset)
-        return json.dumps({"timezone": timezone.upper(),
-                           "current_time": local_time.strftime("%I:%M %p"),
-                           "date": local_time.strftime("%B %d, %Y")})
-    return json.dumps({"error": f"Unknown timezone: {timezone}"})
+        return {"timezone": timezone.upper(),
+                "current_time": local_time.strftime("%I:%M %p"),
+                "date": local_time.strftime("%B %d, %Y")}
+    return {"error": f"Unknown timezone: {timezone}"}
 
 
-def unit_converter(value: float, from_unit: str, to_unit: str) -> str:
-    """Convert between common units."""
+def unit_converter(value: float, from_unit: str, to_unit: str) -> dict:
+    """Convert a value from one unit to another.
+
+    Args:
+        value: The numeric value to convert
+        from_unit: Source unit (km, miles, kg, lbs, celsius, fahrenheit)
+        to_unit: Target unit (km, miles, kg, lbs, celsius, fahrenheit)
+    """
     conversions = {
         ("km", "miles"): lambda v: v * 0.621371,
         ("miles", "km"): lambda v: v * 1.60934,
@@ -74,116 +87,78 @@ def unit_converter(value: float, from_unit: str, to_unit: str) -> str:
     key = (from_unit.lower(), to_unit.lower())
     if key in conversions:
         result = conversions[key](value)
-        return json.dumps({"original": f"{value} {from_unit}",
-                           "converted": f"{result:.2f} {to_unit}"})
-    return json.dumps({"error": f"Cannot convert from {from_unit} to {to_unit}"})
+        return {"original": f"{value} {from_unit}", "converted": f"{result:.2f} {to_unit}"}
+    return {"error": f"Cannot convert from {from_unit} to {to_unit}"}
+
+
+# Tool registry
+ALL_TOOLS = [get_weather, get_time, unit_converter]
+TOOL_MAP = {fn.__name__: fn for fn in ALL_TOOLS}
 
 
 # ─────────────────────────────────────────────
-# 2. Define tool schemas for OpenAI
-# ─────────────────────────────────────────────
-
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get the current weather for a given city.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "city": {"type": "string", "description": "The city name, e.g. 'London'"}
-                },
-                "required": ["city"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_time",
-            "description": "Get the current time in a given timezone.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "timezone": {"type": "string", "description": "Timezone abbreviation, e.g. 'EST', 'GMT', 'IST'"}
-                },
-                "required": ["timezone"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "unit_converter",
-            "description": "Convert a value from one unit to another.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "value": {"type": "number", "description": "The numeric value to convert"},
-                    "from_unit": {"type": "string", "description": "Source unit (km, miles, kg, lbs, celsius, fahrenheit)"},
-                    "to_unit": {"type": "string", "description": "Target unit (km, miles, kg, lbs, celsius, fahrenheit)"},
-                },
-                "required": ["value", "from_unit", "to_unit"],
-            },
-        },
-    },
-]
-
-TOOL_MAP = {"get_weather": get_weather, "get_time": get_time, "unit_converter": unit_converter}
-
-
-# ─────────────────────────────────────────────
-# 3. The tool-calling agent loop
+# 2. The tool-calling agent loop
 # ─────────────────────────────────────────────
 
 def run_agent(question: str) -> str:
     """
-    Complete tool-calling flow:
-      1. Send user question + tool schemas to the LLM
-      2. Check if LLM wants to call tool(s)
+    Complete tool-calling flow with Gemini:
+      1. Send user question + tools to the model
+      2. Check if model wants to call tool(s)
       3. Execute the tool(s) locally
-      4. Send results back to LLM
+      4. Send results back to model
       5. Get final answer
     """
     print("\n" + "━" * 60)
     print(f"  🗣️  User: {question}")
     print("━" * 60)
 
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant with access to weather, time, and unit conversion tools. Use them when needed."},
-        {"role": "user", "content": question},
-    ]
+    model = genai.GenerativeModel(
+        model_name="gemini-2.0-flash",
+        tools=ALL_TOOLS,
+        system_instruction="You are a helpful assistant with access to weather, time, and unit conversion tools. Use them when needed.",
+    )
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini", messages=messages, tools=TOOLS, tool_choice="auto", temperature=0)
+    chat = model.start_chat()
+    response = chat.send_message(question)
 
-    assistant_msg = response.choices[0].message
+    # Process function calls (may be multiple)
+    function_calls = [part.function_call for part in response.parts
+                      if hasattr(part, "function_call") and part.function_call.name]
 
-    if assistant_msg.tool_calls:
-        print(f"\n  📋 Agent wants to call {len(assistant_msg.tool_calls)} tool(s):\n")
-        messages.append(assistant_msg)
+    if function_calls:
+        print(f"\n  📋 Agent wants to call {len(function_calls)} tool(s):\n")
 
-        for i, tool_call in enumerate(assistant_msg.tool_calls, 1):
-            func_name = tool_call.function.name
-            func_args = json.loads(tool_call.function.arguments)
+        # Build all function responses
+        function_responses = []
+        for i, fc in enumerate(function_calls, 1):
+            func_name = fc.name
+            func_args = dict(fc.args)
             print(f"  [{i}] 🔧 {func_name}({func_args})")
+
             result = TOOL_MAP[func_name](**func_args)
             print(f"      📤 Result: {result}")
-            messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": result})
 
-        final_response = client.chat.completions.create(
-            model="gpt-4o-mini", messages=messages, temperature=0)
-        answer = final_response.choices[0].message.content
-    else:
-        answer = assistant_msg.content
+            function_responses.append(
+                genai.protos.Part(
+                    function_response=genai.protos.FunctionResponse(
+                        name=func_name, response={"result": result}
+                    )
+                )
+            )
 
+        # Send all results back at once
+        response = chat.send_message(
+            genai.protos.Content(parts=function_responses)
+        )
+
+    answer = response.text
     print(f"\n  🤖 Agent: {answer}")
     return answer
 
 
 # ─────────────────────────────────────────────
-# 4. Demo
+# 3. Demo
 # ─────────────────────────────────────────────
 
 def main():

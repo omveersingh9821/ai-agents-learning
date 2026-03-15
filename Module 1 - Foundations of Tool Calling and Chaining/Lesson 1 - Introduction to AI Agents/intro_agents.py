@@ -14,12 +14,14 @@
 """
 
 import os
+import json
 from dotenv import load_dotenv
-from openai import OpenAI
+import google.generativeai as genai
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
 
 # ─────────────────────────────────────────────
 # 1. A plain LLM call (no tools — just text in, text out)
@@ -33,21 +35,10 @@ def plain_llm_call(question: str) -> str:
     print("🧠  PLAIN LLM (no tools)")
     print("=" * 60)
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a helpful assistant. If you don't know "
-                    "something, say so honestly."
-                ),
-            },
-            {"role": "user", "content": question},
-        ],
-        temperature=0,
-    )
-    answer = response.choices[0].message.content
+    model = genai.GenerativeModel("gemini-2.0-flash")
+    response = model.generate_content(question)
+
+    answer = response.text
     print(f"Q: {question}")
     print(f"A: {answer}\n")
     return answer
@@ -57,39 +48,18 @@ def plain_llm_call(question: str) -> str:
 # 2. A simple "agent" that has a tool (calculator)
 # ─────────────────────────────────────────────
 
-# Define a basic tool — a calculator
 def calculator(expression: str) -> str:
-    """Safely evaluate a math expression and return the result."""
+    """Safely evaluate a math expression and return the result.
+
+    Args:
+        expression: The math expression to evaluate, e.g. '2+2', '15*7'
+    """
     try:
         allowed_names = {"__builtins__": {}}
         result = eval(expression, allowed_names)
         return str(result)
     except Exception as e:
         return f"Error: {e}"
-
-
-# Define the tool schema for OpenAI
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "calculator",
-            "description": "Evaluate a mathematical expression. Examples: '2+2', '15*7', '100/4'",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "expression": {
-                        "type": "string",
-                        "description": "The math expression to evaluate",
-                    }
-                },
-                "required": ["expression"],
-            },
-        },
-    }
-]
-
-TOOL_MAP = {"calculator": calculator}
 
 
 def agent_with_tools(question: str) -> str:
@@ -106,62 +76,47 @@ def agent_with_tools(question: str) -> str:
     print("=" * 60)
     print(f"Q: {question}\n")
 
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a helpful AI agent. You have access to a calculator tool. "
-                "Use it whenever the user asks a math question. "
-                "Always show your work."
-            ),
-        },
-        {"role": "user", "content": question},
-    ]
-
-    # Step 1: Send the question to the LLM (with tool definitions)
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=messages,
-        tools=TOOLS,
-        tool_choice="auto",
-        temperature=0,
+    # Gemini can take Python functions directly as tools!
+    model = genai.GenerativeModel(
+        model_name="gemini-2.0-flash",
+        tools=[calculator],
     )
 
-    assistant_msg = response.choices[0].message
+    chat = model.start_chat()
+    response = chat.send_message(question)
 
-    # Step 2: Check if the model wants to call a tool
-    if assistant_msg.tool_calls:
-        print("📋  Agent decided to use tool(s):\n")
-        messages.append(assistant_msg)
+    # Check if the model wants to call a tool
+    function_call = None
+    for part in response.parts:
+        if hasattr(part, "function_call") and part.function_call.name:
+            function_call = part.function_call
+            break
 
-        for tool_call in assistant_msg.tool_calls:
-            func_name = tool_call.function.name
-            func_args = eval(tool_call.function.arguments)
+    if function_call:
+        func_name = function_call.name
+        func_args = dict(function_call.args)
 
-            print(f"   🔧 Tool   : {func_name}")
-            print(f"   📥 Input  : {func_args}")
+        print(f"📋  Agent decided to use a tool:\n")
+        print(f"   🔧 Tool   : {func_name}")
+        print(f"   📥 Input  : {func_args}")
 
-            # Step 3: Execute the tool
-            result = TOOL_MAP[func_name](**func_args)
-            print(f"   📤 Output : {result}\n")
+        # Step 3: Execute the tool
+        result = calculator(**func_args)
+        print(f"   📤 Output : {result}\n")
 
-            # Step 4: Feed the result back to the LLM
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "content": result,
-            })
-
-        # Step 5: Get the final answer
-        final_response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0,
+        # Step 4: Feed the result back to the LLM
+        response = chat.send_message(
+            genai.protos.Content(
+                parts=[genai.protos.Part(
+                    function_response=genai.protos.FunctionResponse(
+                        name=func_name,
+                        response={"result": result},
+                    )
+                )]
+            )
         )
-        answer = final_response.choices[0].message.content
-    else:
-        answer = assistant_msg.content
 
+    answer = response.text
     print(f"A: {answer}\n")
     return answer
 

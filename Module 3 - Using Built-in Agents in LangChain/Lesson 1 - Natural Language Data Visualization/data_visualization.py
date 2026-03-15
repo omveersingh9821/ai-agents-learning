@@ -21,7 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 
 load_dotenv()
@@ -52,7 +52,7 @@ def load_data() -> pd.DataFrame:
 
 def create_data_agent(df: pd.DataFrame):
     """Create a Pandas DataFrame agent that can analyze data via natural language."""
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
     agent = create_pandas_dataframe_agent(
         llm, df, verbose=True, allow_dangerous_code=True, agent_type="openai-tools")
     return agent
@@ -126,7 +126,6 @@ def manual_visualization(df: pd.DataFrame):
     output_dir = os.path.join(SCRIPT_DIR, "charts")
     os.makedirs(output_dir, exist_ok=True)
 
-    # Chart 1: Revenue by Product
     fig, ax = plt.subplots(figsize=(10, 6))
     revenue_by_product = df.groupby("product")["revenue"].sum().sort_values(ascending=False)
     colors = ["#4CAF50", "#2196F3", "#FF9800"]
@@ -142,7 +141,6 @@ def manual_visualization(df: pd.DataFrame):
     plt.close()
     print("  ✅ Saved: charts/manual_revenue_by_product.png")
 
-    # Chart 2: Monthly trends
     fig, ax = plt.subplots(figsize=(12, 6))
     monthly = df.groupby(["month", "product"])["revenue"].sum().unstack()
     monthly.plot(ax=ax, marker="o", linewidth=2)
@@ -156,7 +154,6 @@ def manual_visualization(df: pd.DataFrame):
     plt.close()
     print("  ✅ Saved: charts/manual_monthly_trends.png")
 
-    # Chart 3: Profit analysis
     fig, ax = plt.subplots(figsize=(10, 6))
     df["profit"] = df["revenue"] - df["cost"]
     profit = df.groupby("product")["profit"].sum().sort_values(ascending=False)
@@ -189,7 +186,7 @@ def main():
         analyze_data(agent)
         generate_charts(agent)
     except Exception as e:
-        print(f"\n  ⚠️  Agent-based analysis requires an OpenAI API key.")
+        print(f"\n  ⚠️  Agent-based analysis requires a Google Gemini API key.")
         print(f"     Error: {e}")
         print(f"     Manual charts have been generated as a fallback.")
 

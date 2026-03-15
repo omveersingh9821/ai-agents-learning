@@ -18,7 +18,7 @@ import os
 import json
 from dotenv import load_dotenv
 
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_core.tools import tool
 
@@ -104,7 +104,7 @@ def demo_bind_tools():
     print("  1️⃣  Binding Tools to the LLM")
     print("=" * 60)
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
     llm_with_tools = llm.bind_tools(all_tools)
 
     response = llm_with_tools.invoke("What's the stock price of Apple?")
@@ -137,7 +137,7 @@ def manual_tool_calling():
     print("  2️⃣  Manual Tool Execution Flow")
     print("=" * 60)
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
     llm_with_tools = llm.bind_tools(all_tools)
 
     question = "What's the current stock price of Tesla and Microsoft?"
@@ -175,7 +175,7 @@ def multi_turn_with_tools():
     print("  3️⃣  Multi-Turn Conversation with Tools")
     print("=" * 60)
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
     llm_with_tools = llm.bind_tools(all_tools)
     messages = []
 
