@@ -43,7 +43,7 @@ if not GOOGLE_API_KEY:
 # ──────────────────────────────────────────────────────────────────────
 # We'll use Google Gemini as the backbone LLM for both agents.
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     google_api_key=GOOGLE_API_KEY,
     temperature=0,            # deterministic output for reproducibility
     convert_system_message_to_human=True,
